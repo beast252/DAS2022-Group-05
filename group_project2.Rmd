@@ -1,6 +1,6 @@
 ---
 title: "group project 2"
-author: "karen"
+author: "Group 05"
 date: "2022/3/15"
 output: html_document
 ---
@@ -14,9 +14,10 @@ library(gapminder)
 library(sjPlot)
 library(stats)
 library(jtools)
-library("MASS")
+library(MASS)
 library(BMA)
 library(ROCR)
+library(GGally)
 ```
 
 ```{r}
@@ -40,34 +41,73 @@ Following your analyses, you should then summarise your results in the form of a
 # create a col seperate the rate: >7(1), <=7(0)
 ```{r}
 film <- film %>%
-  mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1)))
+  mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>% 
+  na.omit()
 ```
 
+Model 1
 ```{r}
-model <-  glm(rating.large7 ~ year + length + budget + votes , family = binomial(link = "cloglog"), data = film)
-
-logit.step <- step(model,direction='both')
-summary(logit.step)
+model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "logit"), data = film)
+summary(model1)
 ```
+Model 2
 ```{r}
-model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
-summ(model1)
+model2 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "probit"), data = film)
+summary(model2)
 ```
+Model 3
+```{r}
+model3 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
+summary(model3)
+```
+Model BIC
 ```{r}
 BIC.model <- bic.glm(x = data.frame(film[,2:6]), y=film$rating.large7,
                      f = rating.large7 ~ year + length + budget + votes + genre,
                      strict = FALSE, glm.family="binomial", factor.type=TRUE)
 ```
+Model Comparison
+```{r}
+film_p <- data.frame(film = film,
+                     logit = fitted(model1),
+                     probit = fitted(model2),
+                     cloglog = fitted(model3))
+ggplot(film_p, aes(y = film$rating.large7, x = film$rating.large7)) +
+geom_point() + xlab("Votes") + ylab("Rating") +
+geom_line(aes(x = film$rating, y = logit, colour = "Logit")) +
+geom_line(aes(x = film$rating, y = probit, colour = "Probit")) +
+geom_line(aes(x = film$rating, y = cloglog, colour = "C log-log")) +
+guides(colour = guide_legend("Method"))
+
+```
+
+Since Model 1 has lowest AIC=1310.1 and deviance D=1290.1 we will go ahead and used "logit" link function in our model
+
+```{r}
+model <-  glm(rating.large7 ~ length + budget + votes + genre , family = binomial(link = "logit"), data = film)
+
+logit.step <- step(model,direction='both')
+summary(logit.step)
+
+```
+
+Pairs plot
+```{r}
+ggpairs(film[,c(2:6,8)])
+```
 
 ROC
 ```{r}
-titanic$Prid <- predict(mod.titan, titanic, type="response")
-score <- prediction(titanic$Prid,titanic$survived)
+film$Prid <- predict(model1, film, type="response")
+score <- prediction(film$Prid,film$rating.large7)
 perf <- performance(score,"tpr","fpr")
 auc <- performance(score,"auc")
 perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
 p4<- ggplot(perfd, aes(x= x, y=y)) + geom_line() +
 xlab("False positive rate") + ylab("True positive rate") +
 ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
+p4
 ```
+
+AOC = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
 
