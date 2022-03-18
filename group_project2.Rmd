@@ -127,22 +127,40 @@ the AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. He
 ```{r}
 model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "logit"), data = film)
 summary(model1)
+```
+```{r,eval=FALSE}
 summ(model1)
 ```
+
 ### Model 2: probit link
 ```{r}
 model2 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "probit"), data = film)
 summary(model2)
+```
+```{r,eval=FALSE}
 summ(model2)
 ```
+
 ### Model 3: complementary log-log link
 ```{r}
 model3 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
 summary(model3)
+```
+```{r, eval=FALSE}
 summ(model3)
 ```
 
+<<<<<<< HEAD
+|  Model        |  link function| AIC| BIC |Pseudo-R² (Cragg-Uhler)|Pseudo-R² (McFadden)|
+|:-----------------|----:|---:|----:|---:|----:|
+|model1     | $g(p_i)=log(\frac{p_i}{1-p_i})$| 1310.07|  1367.45| 0.72|0.57|
+|model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1334.66|1392.04|0.71|0.56|
+|model3     | $g(p_i)=log[-log(1-p_i)]$ | 1404.55|1461.94|0.69|0.54|
+
+D0-D1 = 2982.5-2357.5 = 1692.401 >  x^2(0.95, 9) = 16.91898, so we reject H0, we can say that the model1 fits the data better than saturated model.
+=======
 $$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ So we reject H0, and we can say that the model1 fits the data better than saturated model.
+>>>>>>> 7f314e4a72ae301d3e1c4b056c82ee02e152c6f2
 ```{r}
 model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
@@ -163,9 +181,20 @@ plot_model(model1,type="pred",terms=c("budget"),axis.title=c("budget","Prob(rati
 plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 7)"))
 ```
 
+# Model checking and diagnostics
+## Hosmer_Lemeshow goodness of fit test
+```{r, echo=FALSE}
+library(vcdExtra)
+```
+
+```{r}
+for (i in 6:15){
+  print(HLtest(model1, g=i))
+}
+```
 
 
-Model Comparison
+## Model Comparison
 ```{r}
 film_p <- data.frame(film = film,
                      logit = fitted(model1),
@@ -181,10 +210,7 @@ guides(colour = guide_legend("Method"))
 ```
 
 
-
-
-
-ROC
+## ROC and AUC
 ```{r}
 film$Prid <- predict(model1, film, type="response")
 score <- prediction(film$Prid,film$rating.large7)
