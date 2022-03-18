@@ -26,13 +26,14 @@ library(MASS)
 library(BMA)
 library(ROCR)
 library(GGally)
+library(generalhoslem)
 ```
 
 ```{r}
 film <- read.csv("dataset5.csv")
 ```
 # Introduction of dataset
-## question of dataset
+## Question to be explored
 Imagine you have been asked by a film producer to investigate the following question of interest:
 
 * Which properties of films influence whether they are rated by IMDB as greater than 7 or not?
@@ -40,7 +41,7 @@ Imagine you have been asked by a film producer to investigate the following ques
 You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). <br>
 Following your analyses, you should then summarise your results in the form of a presentation.
 
-## explain each variables
+## Explain each variables
 * film.id – The unique identifier for the film
 * year – Year of release of the film in cinemas
 * length – Duration (in minutes)
@@ -49,8 +50,8 @@ Following your analyses, you should then summarise your results in the form of a
 * genre – Genre of the film
 * rating – IMDB rating from 0-10
 
-# data processing
-create a col seperate the rate: >7(1), <=7(0)
+# Data processing
+Create a column to separate the rating: >7(1), <=7(0)
 ```{r}
 film <- film %>%
   mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
@@ -60,7 +61,7 @@ film <- film %>%
 
 
 # Exploratory data analysis
-## the distribution of rating.large7 by genre
+## The distribution of rating.large7 by genre
 ```{r}
 film %>%
   group_by(genre, rating.large7)%>%
@@ -72,7 +73,7 @@ axis.labels =c("0","1"),
 axis.titles=c("rating larger than 7?"))
 ```
 
-## the distribution of rating.large7 by other numerical variables
+## The distribution of rating.large7 by other numerical variables
 ```{r}
 ## budget
 film.plot1<-ggplot(film, aes(y=budget,x=rating.large7))
@@ -110,24 +111,24 @@ panel.border =element_rect(fill =NA,colour ="black",size =1))
 
 
 
-# formal analysis
-## change the votes variable to log votes
+# Formal data analysis
+## Take log transformation of variable "vote" because the scale is not linear.
 ```{r}
 film <- film %>%
   mutate(log.votes = log(votes))
 ```
 
-## stepwise: choosing which variables need to be removed. 
-Since Model2(removed year) has lowest AIC=1310.1 and deviance D=1290.1 we will go ahead and compared the three link function in our model
+## Stepwise Slection: choosing which variables need to be removed. 
+Since Model with "year" removed has lowest AIC=1303.21 and deviance D=1283.2 we will go ahead and compared the three link function in our model
 ```{r}
-model <-  glm(rating.large7 ~ year + length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
+model_sat <-  glm(rating.large7 ~ length + budget + genre + log.votes + year, family = binomial(link = "logit"), data = film)
 
-logit.step <- step(model,direction='both')
+logit.step <- step(model_sat,direction='both')
 summary(logit.step)
 ```
 
-## compare different link functions
-the AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
+## Comparing different link functions
+The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
 
 ### Model 1: logit link
 ```{r}
@@ -163,24 +164,33 @@ summ(model3)
 |model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1328.18|1385.57|
 |model3     | $g(p_i)=log[-log(1-p_i)]$ | 1402.13|1459.51|
 
-D0-D1 = 2982.5-2357.5 = 1692.401 >  x^2(0.95, 9) = 16.91898, so we reject H0, we can say that the model1 fits the data better than saturated model.
-
-$$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
-So we reject H0, and we can say that the model1 fits the data better than saturated model.
+## Residual Deviance
+$$D_0-D_1 = 2982.5-1283.2 = 1699.3 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
+We reject H0, and we can say that the model1 fits the data better than Null model.
 
 ```{r}
 model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
 qchisq(p=0.95, df = df)
 ```
+## Deviance 
+To assess the adequacy of the model1 compared to the full/saturated model 
 
-## odds ratios of model1
+The deviance of model1 is $D=1283.2> {\chi}^2(0.95,2)=5.991465$
+
+So we can conclude that there is no evidence of lack of fit for the model1.
+
+```{r}
+qchisq(p=0.95,df=(length(model_sat$coefficients)-length(model1$coefficients)))
+```
+
+## Odds ratios of model1
 ```{r}
 plot_model(model1,show.values=TRUE)+
   scale_y_log10(limits = c(0.001, 1000))
 ```
 
-# prediction
+# Prediction
 ```{r}
 plot_model(model1,type="pred",terms=c("length"),axis.title=c("length","Prob(rating above 7)"))
 plot_model(model1,type="pred",terms=c("log.votes"),axis.title=c("log.votes","Prob(rating above 7)"))
@@ -189,7 +199,7 @@ plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating
 ```
 
 # Model checking and diagnostics
-## ROC and AUC
+## ROC curve and AUC
 ```{r}
 film$Prid <- predict(model1, film, type="response")
 score <- prediction(film$Prid,film$rating.large7)
@@ -202,5 +212,15 @@ ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
 p4
 ```
 
-AUC = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
+The area under Curve (AUC) = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
 
+## Hosmer-Lemeshow goodness of fit test
+$H_0:$ Model1 fits the data well
+
+$H_1:$ Model1 is not a good fit for the data
+
+```{r}
+source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
+HLTest(model1,g=6)
+```
+The large p-value = 0.2417 indicates no lack of fit for the model1 and we fail to reject $H_0$.
