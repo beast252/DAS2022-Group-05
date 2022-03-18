@@ -91,7 +91,7 @@ plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
 
 ## votes
-film.plot3<-ggplot(film, aes(y=votes,x=rating.large7))
+film.plot3<-ggplot(film, aes(y=log(votes),x=rating.large7))
 
 film.plot3+geom_boxplot()+xlab("rating larger than 7?")+
 theme(panel.background =element_rect(fill ="transparent",colour =NA),
@@ -111,10 +111,16 @@ panel.border =element_rect(fill =NA,colour ="black",size =1))
 
 
 # formal analysis
+## change the votes variable to log votes
+```{r}
+film <- film %>%
+  mutate(log.votes = log(votes))
+```
+
 ## stepwise: choosing which variables need to be removed. 
 Since Model2(removed year) has lowest AIC=1310.1 and deviance D=1290.1 we will go ahead and compared the three link function in our model
 ```{r}
-model <-  glm(rating.large7 ~ year + length + budget + votes + genre, family = binomial(link = "logit"), data = film)
+model <-  glm(rating.large7 ~ year + length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
 
 logit.step <- step(model,direction='both')
 summary(logit.step)
@@ -125,7 +131,7 @@ the AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. He
 
 ### Model 1: logit link
 ```{r}
-model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "logit"), data = film)
+model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
 summary(model1)
 ```
 ```{r,eval=FALSE}
@@ -134,7 +140,7 @@ summ(model1)
 
 ### Model 2: probit link
 ```{r}
-model2 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "probit"), data = film)
+model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film)
 summary(model2)
 ```
 ```{r,eval=FALSE}
@@ -143,24 +149,25 @@ summ(model2)
 
 ### Model 3: complementary log-log link
 ```{r}
-model3 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
+model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film)
 summary(model3)
 ```
 ```{r, eval=FALSE}
 summ(model3)
 ```
 
-<<<<<<< HEAD
-|  Model        |  link function| AIC| BIC |Pseudo-R² (Cragg-Uhler)|Pseudo-R² (McFadden)|
-|:-----------------|----:|---:|----:|---:|----:|
-|model1     | $g(p_i)=log(\frac{p_i}{1-p_i})$| 1310.07|  1367.45| 0.72|0.57|
-|model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1334.66|1392.04|0.71|0.56|
-|model3     | $g(p_i)=log[-log(1-p_i)]$ | 1404.55|1461.94|0.69|0.54|
+
+|  Model        |  link function| AIC| BIC |
+|:-----------------|----:|---:|----:|
+|model1     | $g(p_i)=log(\frac{p_i}{1-p_i})$| 1303.21|  1360.60|
+|model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1328.18|1385.57|
+|model3     | $g(p_i)=log[-log(1-p_i)]$ | 1402.13|1459.51|
 
 D0-D1 = 2982.5-2357.5 = 1692.401 >  x^2(0.95, 9) = 16.91898, so we reject H0, we can say that the model1 fits the data better than saturated model.
-=======
-$$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ So we reject H0, and we can say that the model1 fits the data better than saturated model.
->>>>>>> 7f314e4a72ae301d3e1c4b056c82ee02e152c6f2
+
+$$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
+So we reject H0, and we can say that the model1 fits the data better than saturated model.
+
 ```{r}
 model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
@@ -176,40 +183,12 @@ plot_model(model1,show.values=TRUE)+
 # prediction
 ```{r}
 plot_model(model1,type="pred",terms=c("length"),axis.title=c("length","Prob(rating above 7)"))
-plot_model(model1,type="pred",terms=c("votes"),axis.title=c("votes","Prob(rating above 7)"))
+plot_model(model1,type="pred",terms=c("log.votes"),axis.title=c("log.votes","Prob(rating above 7)"))
 plot_model(model1,type="pred",terms=c("budget"),axis.title=c("budget","Prob(rating above 7)"))
 plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 7)"))
 ```
 
 # Model checking and diagnostics
-## Hosmer_Lemeshow goodness of fit test
-```{r, echo=FALSE}
-library(vcdExtra)
-```
-
-```{r}
-for (i in 6:15){
-  print(HLtest(model1, g=i))
-}
-```
-
-
-## Model Comparison
-```{r}
-film_p <- data.frame(film = film,
-                     logit = fitted(model1),
-                     probit = fitted(model2),
-                     cloglog = fitted(model3))
-ggplot(film_p, aes(y = film$rating.large7, x = film$rating.large7)) +
-geom_point() + xlab("Votes") + ylab("Rating") +
-geom_line(aes(x = film$rating, y = logit, colour = "Logit")) +
-geom_line(aes(x = film$rating, y = probit, colour = "Probit")) +
-geom_line(aes(x = film$rating, y = cloglog, colour = "C log-log")) +
-guides(colour = guide_legend("Method"))
-
-```
-
-
 ## ROC and AUC
 ```{r}
 film$Prid <- predict(model1, film, type="response")
@@ -223,5 +202,5 @@ ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
 p4
 ```
 
-AUC = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
+AUC = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
 
