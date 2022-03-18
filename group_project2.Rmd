@@ -2,12 +2,14 @@
 title: "group project 2"
 author: "Group 05"
 date: "2022/3/15"
-output:   
+output:
+  pdf_document:
+    toc: yes
   html_document:
     df_print: paged
-    toc: true
+    toc: yes
     theme: united
-    number_sections: true
+    number_sections: yes
 ---
 
 ```{r setup, include=FALSE}
@@ -140,7 +142,7 @@ summary(model3)
 summ(model3)
 ```
 
-D0-D1 = 2982.5-2357.5 = 1692.401 >  x^2(0.95, 9) = 16.91898, so we reject H0, we can say that the model1 fits the data better than saturated model.
+$$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ So we reject H0, and we can say that the model1 fits the data better than saturated model.
 ```{r}
 model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
@@ -149,7 +151,8 @@ qchisq(p=0.95, df = df)
 
 ## odds ratios of model1
 ```{r}
-plot_model(model1,show.values=TRUE)
+plot_model(model1,show.values=TRUE)+
+  scale_y_log10(limits = c(0.001, 1000))
 ```
 
 # prediction
@@ -194,5 +197,5 @@ ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
 p4
 ```
 
-AOC = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
+AUC = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
 
