@@ -1,22 +1,31 @@
 ---
 title: "group project 2"
-author: "karen"
+author: "Group 05"
 date: "2022/3/15"
-output: html_document
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+    theme: united
+    number_sections: yes
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE)
 library(knitr)
+library(dplyr)
 library(tidyverse)
 library(moderndive)
 library(gapminder)
 library(sjPlot)
 library(stats)
 library(jtools)
-library("MASS")
+library(MASS)
 library(BMA)
 library(ROCR)
+library(GGally)
 ```
 
 ```{r}
@@ -25,49 +34,194 @@ film <- read.csv("dataset5.csv")
 # Introduction of dataset
 ## question of dataset
 Imagine you have been asked by a film producer to investigate the following question of interest:
-• Which properties of films influence whether they are rated by IMDB as greater than 7 or not?
-You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). 
-Following your analyses, you should then summarise your results in the form of a presentation.
-## explain each variables
-• film.id – The unique identifier for the film
-• year – Year of release of the film in cinemas
-• length – Duration (in minutes)
-• budget – Budget for the films production (in $1000000s)
-• votes – Number of positive votes received by viewers
-• genre – Genre of the film
-• rating – IMDB rating from 0-10
 
-# create a col seperate the rate: >7, <=7
+* Which properties of films influence whether they are rated by IMDB as greater than 7 or not?
+
+You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). <br>
+Following your analyses, you should then summarise your results in the form of a presentation.
+
+## explain each variables
+* film.id – The unique identifier for the film
+* year – Year of release of the film in cinemas
+* length – Duration (in minutes)
+* budget – Budget for the films production (in $1000000s)
+* votes – Number of positive votes received by viewers
+* genre – Genre of the film
+* rating – IMDB rating from 0-10
+
+# data processing
+create a col seperate the rate: >7(1), <=7(0)
 ```{r}
 film <- film %>%
-  mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1)))
+  mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
+  dplyr::select(-film_id, -rating)%>%
+  na.omit()
 ```
 
+
+# Exploratory data analysis
+## the distribution of rating.large7 by genre
 ```{r}
-model <-  glm(rating.large7 ~ year + length + budget + votes , family = binomial(link = "cloglog"), data = film)
+film %>%
+  group_by(genre, rating.large7)%>%
+  summarise(n = n())
+```
+```{r}
+plot_xtab(film$rating.large7,film$genre,show.values =FALSE,show.total =FALSE,
+axis.labels =c("0","1"),
+axis.titles=c("rating larger than 7?"))
+```
+
+## the distribution of rating.large7 by other numerical variables
+```{r}
+## budget
+film.plot1<-ggplot(film, aes(y=budget,x=rating.large7))
+
+film.plot1+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+
+## year
+film.plot2<-ggplot(film, aes(y=year,x=rating.large7))
+
+film.plot2+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+
+## votes
+film.plot3<-ggplot(film, aes(y=votes,x=rating.large7))
+
+film.plot3+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+
+## length
+film.plot4<-ggplot(film, aes(y=length,x=rating.large7))
+
+film.plot4+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
+
+
+
+
+# formal analysis
+## stepwise: choosing which variables need to be removed. 
+Since Model2(removed year) has lowest AIC=1310.1 and deviance D=1290.1 we will go ahead and compared the three link function in our model
+```{r}
+model <-  glm(rating.large7 ~ year + length + budget + votes + genre, family = binomial(link = "logit"), data = film)
 
 logit.step <- step(model,direction='both')
 summary(logit.step)
 ```
+
+## compare different link functions
+the AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
+
+### Model 1: logit link
 ```{r}
-model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
+model1 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "logit"), data = film)
+summary(model1)
+```
+```{r,eval=FALSE}
 summ(model1)
 ```
+
+### Model 2: probit link
 ```{r}
-BIC.model <- bic.glm(x = data.frame(film[,2:6]), y=film$rating.large7,
-                     f = rating.large7 ~ year + length + budget + votes + genre,
-                     strict = FALSE, glm.family="binomial", factor.type=TRUE)
+model2 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "probit"), data = film)
+summary(model2)
+```
+```{r,eval=FALSE}
+summ(model2)
 ```
 
-ROC
+### Model 3: complementary log-log link
 ```{r}
-titanic$Prid <- predict(mod.titan, titanic, type="response")
-score <- prediction(titanic$Prid,titanic$survived)
+model3 <- glm(rating.large7 ~ length + budget + votes + genre, family = binomial(link = "cloglog"), data = film)
+summary(model3)
+```
+```{r, eval=FALSE}
+summ(model3)
+```
+
+<<<<<<< HEAD
+|  Model        |  link function| AIC| BIC |Pseudo-R² (Cragg-Uhler)|Pseudo-R² (McFadden)|
+|:-----------------|----:|---:|----:|---:|----:|
+|model1     | $g(p_i)=log(\frac{p_i}{1-p_i})$| 1310.07|  1367.45| 0.72|0.57|
+|model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1334.66|1392.04|0.71|0.56|
+|model3     | $g(p_i)=log[-log(1-p_i)]$ | 1404.55|1461.94|0.69|0.54|
+
+D0-D1 = 2982.5-2357.5 = 1692.401 >  x^2(0.95, 9) = 16.91898, so we reject H0, we can say that the model1 fits the data better than saturated model.
+=======
+$$D_0-D_1 = 2982.5-2357.5 = 1692.401 >  {\chi}^2(0.95, 9) = 16.91898 $$ So we reject H0, and we can say that the model1 fits the data better than saturated model.
+>>>>>>> 7f314e4a72ae301d3e1c4b056c82ee02e152c6f2
+```{r}
+model1$null.deviance - model1$deviance
+df = model1$df.null - model1$df.residual
+qchisq(p=0.95, df = df)
+```
+
+## odds ratios of model1
+```{r}
+plot_model(model1,show.values=TRUE)+
+  scale_y_log10(limits = c(0.001, 1000))
+```
+
+# prediction
+```{r}
+plot_model(model1,type="pred",terms=c("length"),axis.title=c("length","Prob(rating above 7)"))
+plot_model(model1,type="pred",terms=c("votes"),axis.title=c("votes","Prob(rating above 7)"))
+plot_model(model1,type="pred",terms=c("budget"),axis.title=c("budget","Prob(rating above 7)"))
+plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 7)"))
+```
+
+# Model checking and diagnostics
+## Hosmer_Lemeshow goodness of fit test
+```{r, echo=FALSE}
+library(vcdExtra)
+```
+
+```{r}
+for (i in 6:15){
+  print(HLtest(model1, g=i))
+}
+```
+
+
+## Model Comparison
+```{r}
+film_p <- data.frame(film = film,
+                     logit = fitted(model1),
+                     probit = fitted(model2),
+                     cloglog = fitted(model3))
+ggplot(film_p, aes(y = film$rating.large7, x = film$rating.large7)) +
+geom_point() + xlab("Votes") + ylab("Rating") +
+geom_line(aes(x = film$rating, y = logit, colour = "Logit")) +
+geom_line(aes(x = film$rating, y = probit, colour = "Probit")) +
+geom_line(aes(x = film$rating, y = cloglog, colour = "C log-log")) +
+guides(colour = guide_legend("Method"))
+
+```
+
+
+## ROC and AUC
+```{r}
+film$Prid <- predict(model1, film, type="response")
+score <- prediction(film$Prid,film$rating.large7)
 perf <- performance(score,"tpr","fpr")
 auc <- performance(score,"auc")
 perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
 p4<- ggplot(perfd, aes(x= x, y=y)) + geom_line() +
 xlab("False positive rate") + ylab("True positive rate") +
 ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
+p4
 ```
+
+AUC = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
 
