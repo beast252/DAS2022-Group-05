@@ -219,31 +219,17 @@ model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = bino
 summary(model1)
 ```
 
-```{r,eval=FALSE}
-summ(model1)
-```
-
-### Model 2: probit link
-
-
 ```{r, echo=FALSE}
 s1 <- summ(model1)
 ```
 
-### Model 2: probit link
 
+### Model 2: probit link
 
 ```{r}
 model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film)
 summary(model2)
 ```
-
-```{r,eval=FALSE}
-summ(model2)
-```
-
-### Model 3: complementary log-log link
-
 
 ```{r, echo=FALSE}
 s2 <- summ(model2)
@@ -251,20 +237,10 @@ s2 <- summ(model2)
 
 ### Model 3: complementary log-log link
 
-
 ```{r}
 model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film)
 summary(model3)
 ```
-
-```{r, eval=FALSE}
-summ(model3)
-```
-
-
-## Residual Deviance
-$$D_0-D_1 = 2982.5-1283.2 = 1699.3 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
-
 
 ```{r, echo=FALSE}
 s3 <- summ(model3)
@@ -275,6 +251,11 @@ s3 <- summ(model3)
 | model1 | $g(p_i)=log(\frac{p_i}{1-p_i})$                         | `r round(attr(s1,"aic"),2)` | `r round(attr(s1,"bic"),2)` |
 | model2 | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | `r round(attr(s2,"aic"),2)` | `r round(attr(s2,"bic"),2)` |
 | model3 | $g(p_i)=log[-log(1-p_i)]$                               | `r round(attr(s3,"aic"),2)` | `r round(attr(s3,"bic"),2)` |
+
+
+## Residual Deviance
+$$D_0-D_1 = 2982.5-1283.2 = 1699.3 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
+
 
 ## final model
 
@@ -319,11 +300,6 @@ model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
 qchisq(p=0.95, df = df)
 ```
-
-## Deviance 
-To assess the adequacy of the model1 compared to the full/saturated model 
-
-The deviance of model1 is $D=1283.2> {\chi}^2(0.95,2)=5.991465$
 
 
 ## Deviance
