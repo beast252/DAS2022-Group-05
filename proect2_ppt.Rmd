@@ -1,20 +1,13 @@
 ---
 title: "group project 2"
-author: "Group 05"
-date: "2022/3/15"
-output: 
-  pdf_document:
-    toc: yes
-  
-  html_document:
-    df_print: paged
-    toc: yes
-    theme: united
-    number_sections: yes
+author: "karen"
+date: "2022/3/19"
+output: powerpoint_presentation
 ---
 
+
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(knitr)
 library(dplyr)
 library(tidyverse)
@@ -41,6 +34,8 @@ Imagine you have been asked by a film producer to investigate the following ques
 
 You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). <br> Following your analyses, you should then summarise your results in the form of a presentation.
 
+# Introduction of dataset
+
 ## Explain each variables
 
 -   film.id -- The unique identifier for the film
@@ -51,7 +46,7 @@ You should conduct an analysis to answer your question using a Generalised Linea
 -   genre -- Genre of the film
 -   rating -- IMDB rating from 0-10
 
-# Data processing
+## Data processing
 
 ```{r}
 film <- read.csv("dataset5.csv")
@@ -64,6 +59,7 @@ film <- film %>%
   mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
   dplyr::select(-film_id, -rating)%>%
   na.omit()
+film %>%head(10)%>% kable()
 ```
 
 # Exploratory data analysis
@@ -73,7 +69,8 @@ film <- film %>%
 ```{r}
 film %>%
   group_by(genre, rating.large7)%>%
-  summarise(n = n())
+  summarise(n = n())%>%
+  kable()
 ```
 
 ```{r}
@@ -87,11 +84,13 @@ film %>%
   tabyl(rating.large7, genre) %>% 
   adorn_percentages() %>% 
   adorn_pct_formatting() %>% 
-  adorn_ns() 
+  adorn_ns()%>%
+  kable()
 ```
 
 ## The distribution of rating.large7 by other numerical variables
 
+## budget
 ```{r}
 ## budget
 film.plot1<-ggplot(film, aes(y=budget,x=rating.large7))
@@ -100,7 +99,10 @@ film.plot1+geom_boxplot()+xlab("rating larger than 7?")+
 theme(panel.background =element_rect(fill ="transparent",colour =NA),
 plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
 
+## year
+```{r}
 ## year
 film.plot2<-ggplot(film, aes(y=year,x=rating.large7))
 
@@ -108,7 +110,10 @@ film.plot2+geom_boxplot()+xlab("rating larger than 7?")+
 theme(panel.background =element_rect(fill ="transparent",colour =NA),
 plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
 
+## votes
+```{r}
 ## votes
 film.plot3<-ggplot(film, aes(y=log(votes),x=rating.large7))
 
@@ -116,7 +121,11 @@ film.plot3+geom_boxplot()+xlab("rating larger than 7?")+
 theme(panel.background =element_rect(fill ="transparent",colour =NA),
 plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
 
+## length
+
+```{r}
 ## length
 film.plot4<-ggplot(film, aes(y=length,x=rating.large7))
 
@@ -126,6 +135,7 @@ plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
 ```
 
+
 # Formal data analysis
 
 ## Take log transformation of variable "vote" because the scale is not linear.
@@ -134,6 +144,8 @@ panel.border =element_rect(fill =NA,colour ="black",size =1))
 film <- film %>%
   mutate(log.votes = log(votes))
 ```
+
+# Formal data analysis
 
 ## Stepwise Slection: choosing which variables need to be removed.
 
@@ -146,6 +158,8 @@ logit.step <- step(model_sat,direction='both')
 summary(logit.step)
 ```
 
+# Formal data analysis
+
 ## Comparing different link functions
 
 The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
@@ -154,10 +168,10 @@ The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. He
 
 ```{r}
 model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
-summary(model1)
+summary(model1)$coefficients%>%kable()
 ```
 
-```{r, echo=FALSE}
+```{r}
 s1 <- summ(model1)
 ```
 
@@ -165,10 +179,10 @@ s1 <- summ(model1)
 
 ```{r}
 model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film)
-summary(model2)
+summary(model2)$coefficients%>%kable()
 ```
 
-```{r, echo=FALSE}
+```{r}
 s2 <- summ(model2)
 ```
 
@@ -176,10 +190,10 @@ s2 <- summ(model2)
 
 ```{r}
 model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film)
-summary(model3)
+summary(model3)$coefficients%>%kable()
 ```
 
-```{r, echo=FALSE}
+```{r}
 s3 <- summ(model3)
 ```
 
@@ -258,12 +272,25 @@ plot_model(model1,show.values=TRUE)+
 
 # Prediction
 
+## length
 ```{r}
 plot_model(model1,type="pred",terms=c("length"),axis.title=c("length","Prob(rating above 7)"))
+```
+## log.votes
+```{r}
 plot_model(model1,type="pred",terms=c("log.votes"),axis.title=c("log.votes","Prob(rating above 7)"))
+```
+
+## budget
+```{r}
 plot_model(model1,type="pred",terms=c("budget"),axis.title=c("budget","Prob(rating above 7)"))
+```
+
+## genre
+```{r}
 plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 7)"))
 ```
+
 
 # Model checking and diagnostics
 
