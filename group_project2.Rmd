@@ -379,9 +379,6 @@ p4
 ```
 
 
-The area under Curve (AUC) = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables. 
-
-## Hosmer-Lemeshow goodness of fit test
 
 The area under Curve (AUC) = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables.
 
