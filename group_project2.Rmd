@@ -262,12 +262,6 @@ summ(model3)
 ```
 
 
-|  Model        |  link function| AIC| BIC |
-|:-----------------|----:|---:|----:|
-|model1     | $g(p_i)=log(\frac{p_i}{1-p_i})$| 1303.21|  1360.60|
-|model2     | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | 1328.18|1385.57|
-|model3     | $g(p_i)=log[-log(1-p_i)]$ | 1402.13|1459.51|
-
 ## Residual Deviance
 $$D_0-D_1 = 2982.5-1283.2 = 1699.3 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
 
