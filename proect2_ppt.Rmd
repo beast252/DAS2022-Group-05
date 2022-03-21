@@ -250,7 +250,7 @@ qchisq(p=0.95, df = df)
 
 To assess the adequacy of the model1 compared to the full/saturated model
 
-The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95,2)=`r qchisq(0.95,2)`$
+The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95,1)=`r qchisq(0.95,1)`$
 
 So we can conclude that there is no evidence of lack of fit for the model1.
 
