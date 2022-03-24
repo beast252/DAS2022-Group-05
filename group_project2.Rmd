@@ -2,7 +2,6 @@
 title: "group project 2"
 author: "Group 05"
 date: "2022/3/15"
-
 output:
   pdf_document:
     toc: yes
@@ -28,35 +27,8 @@ library(MASS)
 library(BMA)
 library(ROCR)
 library(GGally)
-library(generalhoslem)
-
-```
-
-```{r}
-film <- read.csv("dataset5.csv")
-```
-# Introduction of dataset
-## Question to be explored
-Imagine you have been asked by a film producer to investigate the following question of interest:
-
-* Which properties of films influence whether they are rated by IMDB as greater than 7 or not?
-
-You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). <br>
-Following your analyses, you should then summarise your results in the form of a presentation.
-
-## Explain each variables
-* film.id – The unique identifier for the film
-* year – Year of release of the film in cinemas
-* length – Duration (in minutes)
-* budget – Budget for the films production (in $1000000s)
-* votes – Number of positive votes received by viewers
-* genre – Genre of the film
-* rating – IMDB rating from 0-10
-
-# Data processing
-Create a column to separate the rating: >7(1), <=7(0)
-```{r}
 library(janitor)
+library(generalhoslem)
 ```
 
 # Introduction of dataset
@@ -87,7 +59,6 @@ film <- read.csv("dataset5.csv")
 
 Create a column to separate the rating: \>7(1), \<=7(0)
 
-
 ```{r}
 film <- film %>%
   mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
@@ -95,15 +66,9 @@ film <- film %>%
   na.omit()
 ```
 
-
-
-# Exploratory data analysis
-## The distribution of rating.large7 by genre
-
 # Exploratory data analysis
 
 ## The distribution of rating.large7 by genre
-
 
 ```{r}
 film %>%
@@ -117,8 +82,6 @@ axis.labels =c("0","1"),
 axis.titles=c("rating larger than 7?"))
 ```
 
-## The distribution of rating.large7 by other numerical variables
-
 ```{r}
 film %>% 
   tabyl(rating.large7, genre) %>% 
@@ -128,7 +91,6 @@ film %>%
 ```
 
 ## The distribution of rating.large7 by other numerical variables
-
 
 ```{r}
 ## budget
@@ -164,31 +126,21 @@ plot.background =element_rect(fill ="transparent",colour =NA),
 panel.border =element_rect(fill =NA,colour ="black",size =1))
 ```
 
-
-
-
-
-# Formal data analysis
-## Take log transformation of variable "vote" because the scale is not linear.
-
 # Formal data analysis
 
-## Take log transformation of variable "vote" because the scale is not linear.
-
+## data processing
+- Take log transformation of variable "vote" because the scale is not linear. 
+- remove the "Romance" genre
 
 ```{r}
 film <- film %>%
-  mutate(log.votes = log(votes))
+  mutate(log.votes = log(votes))%>%
+  filter(genre != "Romance")
 ```
 
-
 ## Stepwise Slection: choosing which variables need to be removed. 
-Since Model with "year" removed has lowest AIC=1303.21 and deviance D=1283.2 we will go ahead and compared the three link function in our model
-
-## Stepwise Slection: choosing which variables need to be removed.
 
 Since Model with "year" removed has lowest AIC=1303.21 and deviance D=1283.2 we will go ahead and compared the three link function in our model
-
 
 ```{r}
 model_sat <-  glm(rating.large7 ~ length + budget + genre + log.votes + year, family = binomial(link = "logit"), data = film)
@@ -203,12 +155,6 @@ The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. He
 
 ### Model 1: logit link
 
-
-The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
-
-### Model 1: logit link
-
-
 ```{r}
 model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
 summary(model1)
@@ -217,7 +163,6 @@ summary(model1)
 ```{r, echo=FALSE}
 s1 <- summ(model1)
 ```
-
 
 ### Model 2: probit link
 
@@ -247,14 +192,9 @@ s3 <- summ(model3)
 | model2 | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | `r round(attr(s2,"aic"),2)` | `r round(attr(s2,"bic"),2)` |
 | model3 | $g(p_i)=log[-log(1-p_i)]$                               | `r round(attr(s3,"aic"),2)` | `r round(attr(s3,"bic"),2)` |
 
-
-## Residual Deviance
-$$D_0-D_1 = 2982.5-1283.2 = 1699.3 >  {\chi}^2(0.95, 9) = 16.91898 $$ 
-
-
 ## final model
 
-$$log(\frac{p_{(rating.large7=1)}}{1-p_{(rating.large7=1)}}) = `r round(s1$model$coefficients[1],2)`+`r round(s1$model$coefficients[2],2)`length_i + `r round(s1$model$coefficients[3],2)`*budget_i + `r round(s1$model$coefficients[4],2)`*log(votes_i) + `r round(s1$model$coefficients[5],2)`*I_(genre=Animation) + `r round(s1$model$coefficients[6],2)`*I_(genre=Comedy) + `r round(s1$model$coefficients[7],2)`*I_(genre=Documentary) + `r round(s1$model$coefficients[7],2)`*I_(genre=Drama) + `r round(s1$model$coefficients[7],2)`*I_(genre=Romance) + `r round(s1$model$coefficients[7],2)`*I_(genre=Short)$$
+$$log(\frac{p_{(rating.large7=1)}}{1-p_{(rating.large7=1)}}) = `r round(s1$model$coefficients[1],2)`+`r round(s1$model$coefficients[2],2)`length_i + `r round(s1$model$coefficients[3],2)`*budget_i + `r round(s1$model$coefficients[4],2)`*log(votes_i) + `r round(s1$model$coefficients[5],2)`*I_(genre=Animation) + `r round(s1$model$coefficients[6],2)`*I_(genre=Comedy) + `r round(s1$model$coefficients[7],2)`*I_(genre=Documentary) + `r round(s1$model$coefficients[8],2)`*I_(genre=Drama) + `r round(s1$model$coefficients[9],2)`*I_(genre=Short)$$
 
 $$I_{(genre=Animation)} = \begin{cases}
 1, genre=Animation\\
@@ -272,10 +212,6 @@ $$I_{(genre=Drama)} = \begin{cases}
 1, genre=Drama\\
 0, otherwise
 \end{cases},$$
-$$I_{(genre=Romance)} = \begin{cases}
-1, genre=Romance\\
-0, otherwise
-\end{cases},$$
 $$I_{(genre=Short)} = \begin{cases}
 1, genre=Short\\
 0, otherwise
@@ -287,7 +223,6 @@ $$I_{(genre=Short)} = \begin{cases}
 
 $$D_0-D_1 = `r round(s1$model$null.deviance, 2)`-`r round(s1$model$deviance, 2)` = `r round(s1$model$null.deviance-s1$model$deviance, 2)` >  {\chi}^2(0.95, 9) = `r qchisq(0.95,9)` $$
 
-
 We reject H0, and we can say that the model1 fits the data better than Null model.
 
 ```{r}
@@ -296,13 +231,11 @@ df = model1$df.null - model1$df.residual
 qchisq(p=0.95, df = df)
 ```
 
-
 ## Deviance
 
 To assess the adequacy of the model1 compared to the full/saturated model
 
 The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95,1)=`r qchisq(0.95,1)`$
-
 
 So we can conclude that there is no evidence of lack of fit for the model1.
 
@@ -311,7 +244,6 @@ qchisq(p=0.95,df=(length(model_sat$coefficients)-length(model1$coefficients)))
 ```
 
 ## Odds ratios of model1
-
 
 We interpret the odds ratios as follows: 
 for the increase in the film’s length, the odds of rating bigger than 7 decrease;
@@ -349,12 +281,9 @@ ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
 p4
 ```
 
-
-
-The area under Curve (AUC) = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables.
+The area under Curve (AUC) = 0.947 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables.
 
 ## Hosmer-Lemeshow goodness of fit test
-
 
 $H_0:$ Model1 fits the data well
 
@@ -364,6 +293,5 @@ $H_1:$ Model1 is not a good fit for the data
 source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
 HLTest(model1,g=6)
 ```
-
 
 The large p-value = 0.2417 indicates no lack of fit for the model1 and we fail to reject $H_0$.
