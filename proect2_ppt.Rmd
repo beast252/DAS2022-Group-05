@@ -1,8 +1,8 @@
 ---
 title: "group project 2"
-author: "karen"
 date: "2022/3/19"
-output: powerpoint_presentation
+output:
+  powerpoint_presentation: default
 ---
 
 
@@ -57,7 +57,7 @@ Create a column to separate the rating: \>7(1), \<=7(0)
 ```{r}
 film <- film %>%
   mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
-  dplyr::select(-film_id, -rating)%>%
+  dplyr::select(-film_id)%>%
   na.omit()
 film %>%head(10)%>% kable()
 ```
@@ -141,8 +141,9 @@ panel.border =element_rect(fill =NA,colour ="black",size =1))
 ## Take log transformation of variable "vote" because the scale is not linear.
 
 ```{r}
-film <- film %>%
-  mutate(log.votes = log(votes))
+film.noRomance <- film %>%
+  mutate(log.votes = log(votes))%>%
+  filter(genre != "Romance")
 ```
 
 # Formal data analysis
@@ -152,7 +153,7 @@ film <- film %>%
 Since Model with "year" removed has lowest AIC=1303.21 and deviance D=1283.2 we will go ahead and compared the three link function in our model
 
 ```{r}
-model_sat <-  glm(rating.large7 ~ length + budget + genre + log.votes + year, family = binomial(link = "logit"), data = film)
+model_sat <-  glm(rating.large7 ~ length + budget + genre + log.votes + year, family = binomial(link = "logit"), data = film.noRomance)
 
 logit.step <- step(model_sat,direction='both')
 summary(logit.step)
@@ -167,7 +168,7 @@ The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. He
 ### Model 1: logit link
 
 ```{r}
-model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film)
+model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film.noRomance)
 summary(model1)$coefficients%>%kable()
 ```
 
@@ -178,7 +179,7 @@ s1 <- summ(model1)
 ### Model 2: probit link
 
 ```{r}
-model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film)
+model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film.noRomance)
 summary(model2)$coefficients%>%kable()
 ```
 
@@ -189,7 +190,7 @@ s2 <- summ(model2)
 ### Model 3: complementary log-log link
 
 ```{r}
-model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film)
+model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film.noRomance)
 summary(model3)$coefficients%>%kable()
 ```
 
@@ -205,7 +206,7 @@ s3 <- summ(model3)
 
 ## final model
 
-$$log(\frac{p_{(rating.large7=1)}}{1-p_{(rating.large7=1)}}) = `r round(s1$model$coefficients[1],2)`+`r round(s1$model$coefficients[2],2)`length_i + `r round(s1$model$coefficients[3],2)`*budget_i + `r round(s1$model$coefficients[4],2)`*log(votes_i) + `r round(s1$model$coefficients[5],2)`*I_(genre=Animation) + `r round(s1$model$coefficients[6],2)`*I_(genre=Comedy) + `r round(s1$model$coefficients[7],2)`*I_(genre=Documentary) + `r round(s1$model$coefficients[7],2)`*I_(genre=Drama) + `r round(s1$model$coefficients[7],2)`*I_(genre=Romance) + `r round(s1$model$coefficients[7],2)`*I_(genre=Short)$$
+$$log(\frac{p_{(rating.large7=1)}}{1-p_{(rating.large7=1)}}) = `r round(s1$model$coefficients[1],2)`+`r round(s1$model$coefficients[2],2)`length_i + `r round(s1$model$coefficients[3],2)`*budget_i + `r round(s1$model$coefficients[4],2)`*log(votes_i) + `r round(s1$model$coefficients[5],2)`*I_(genre=Animation) + `r round(s1$model$coefficients[6],2)`*I_(genre=Comedy) + `r round(s1$model$coefficients[7],2)`*I_(genre=Documentary) + `r round(s1$model$coefficients[8],2)`*I_(genre=Drama) + `r round(s1$model$coefficients[9],2)`*I_(genre=Short)$$
 
 $$I_{(genre=Animation)} = \begin{cases}
 1, genre=Animation\\
@@ -221,10 +222,6 @@ $$I_{(genre=Documentary)} = \begin{cases}
 \end{cases},$$
 $$I_{(genre=Drama)} = \begin{cases}
 1, genre=Drama\\
-0, otherwise
-\end{cases},$$
-$$I_{(genre=Romance)} = \begin{cases}
-1, genre=Romance\\
 0, otherwise
 \end{cases},$$
 $$I_{(genre=Short)} = \begin{cases}
@@ -245,12 +242,15 @@ model1$null.deviance - model1$deviance
 df = model1$df.null - model1$df.residual
 qchisq(p=0.95, df = df)
 ```
+```{r}
+df_nested = nrow(film.noRomance) - length(model1$coefficients)
+```
 
 ## Deviance
 
 To assess the adequacy of the model1 compared to the full/saturated model
 
-The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95,1)=`r qchisq(0.95,1)`$
+The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95, 1)=`r qchisq(0.95,1)`$
 
 So we can conclude that there is no evidence of lack of fit for the model1.
 
@@ -296,8 +296,8 @@ plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating
 
 ## ROC curve and AUC
 ```{r}
-film$Prid <- predict(model1, film, type="response")
-score <- prediction(film$Prid,film$rating.large7)
+film.noRomance$Prid <- predict(model1, film.noRomance, type="response")
+score <- prediction(film.noRomance$Prid,film.noRomance$rating.large7)
 perf <- performance(score,"tpr","fpr")
 auc <- performance(score,"auc")
 perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
@@ -321,3 +321,21 @@ HLTest(model1,g=6)
 ```
 
 The large p-value = 0.2417 indicates no lack of fit for the model1 and we fail to reject $H_0$.
+
+# rating large 5.5
+## with romance
+```{r}
+film1 <- film%>%
+  mutate(rating.large5.5 = cut(rating, breaks = c(0,5.5,Inf), labels=c(0,1)),
+         log.votes = log(votes))
+```
+
+```{r}
+model_rating5.5 <- glm(rating.large5.5 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film1)
+summary(model_rating5.5)$coefficients%>%kable()
+```
+
+```{r}
+plot_model(model_rating5.5,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 5.5)"))
+```
+
