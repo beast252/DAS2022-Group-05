@@ -1,0 +1,341 @@
+---
+title: "group project 2"
+date: "2022/3/19"
+output:
+  powerpoint_presentation: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(knitr)
+library(dplyr)
+library(tidyverse)
+library(moderndive)
+library(gapminder)
+library(sjPlot)
+library(stats)
+library(jtools)
+library(MASS)
+library(BMA)
+library(ROCR)
+library(GGally)
+library(generalhoslem)
+library(janitor)
+```
+
+# Introduction of dataset
+
+## Question to be explored
+
+Imagine you have been asked by a film producer to investigate the following question of interest:
+
+-   Which properties of films influence whether they are rated by IMDB as greater than 7 or not?
+
+You should conduct an analysis to answer your question using a Generalised Linear Model (GLM). <br> Following your analyses, you should then summarise your results in the form of a presentation.
+
+# Introduction of dataset
+
+## Explain each variables
+
+-   film.id -- The unique identifier for the film
+-   year -- Year of release of the film in cinemas
+-   length -- Duration (in minutes)
+-   budget -- Budget for the films production (in \$1000000s)
+-   votes -- Number of positive votes received by viewers
+-   genre -- Genre of the film
+-   rating -- IMDB rating from 0-10
+
+## Data processing
+
+```{r}
+film <- read.csv("dataset5.csv")
+```
+
+Create a column to separate the rating: \>7(1), \<=7(0)
+
+```{r}
+film <- film %>%
+  mutate(rating.large7 = cut(rating, breaks = c(0,7,Inf), labels=c(0,1))) %>%
+  dplyr::select(-film_id)%>%
+  na.omit()
+film %>%head(10)%>% kable()
+```
+
+# Exploratory data analysis
+
+## The distribution of rating.large7 by genre
+
+```{r}
+film %>%
+  group_by(genre, rating.large7)%>%
+  summarise(n = n())%>%
+  kable()
+```
+
+```{r}
+plot_xtab(film$rating.large7,film$genre,show.values =FALSE,show.total =FALSE,
+axis.labels =c("0","1"),
+axis.titles=c("rating larger than 7?"))
+```
+
+```{r}
+film %>% 
+  tabyl(rating.large7, genre) %>% 
+  adorn_percentages() %>% 
+  adorn_pct_formatting() %>% 
+  adorn_ns()%>%
+  kable()
+```
+
+## The distribution of rating.large7 by other numerical variables
+
+## budget
+```{r}
+## budget
+film.plot1<-ggplot(film, aes(y=budget,x=rating.large7))
+
+film.plot1+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
+
+## year
+```{r}
+## year
+film.plot2<-ggplot(film, aes(y=year,x=rating.large7))
+
+film.plot2+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
+
+## votes
+```{r}
+## votes
+film.plot3<-ggplot(film, aes(y=log(votes),x=rating.large7))
+
+film.plot3+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
+
+## length
+
+```{r}
+## length
+film.plot4<-ggplot(film, aes(y=length,x=rating.large7))
+
+film.plot4+geom_boxplot()+xlab("rating larger than 7?")+
+theme(panel.background =element_rect(fill ="transparent",colour =NA),
+plot.background =element_rect(fill ="transparent",colour =NA),
+panel.border =element_rect(fill =NA,colour ="black",size =1))
+```
+
+
+# Formal data analysis
+
+## Take log transformation of variable "vote" because the scale is not linear.
+
+```{r}
+film.noRomance <- film %>%
+  mutate(log.votes = log(votes))%>%
+  filter(genre != "Romance")
+```
+
+# Formal data analysis
+
+## Stepwise Slection: choosing which variables need to be removed.
+
+Since Model with "year" removed has lowest AIC=1303.21 and deviance D=1283.2 we will go ahead and compared the three link function in our model
+
+```{r}
+model_sat <-  glm(rating.large7 ~ length + budget + genre + log.votes + year, family = binomial(link = "logit"), data = film.noRomance)
+
+logit.step <- step(model_sat,direction='both')
+summary(logit.step)
+```
+
+# Formal data analysis
+
+## Comparing different link functions
+
+The AIC and BIC in model1 is the smallest, and the Pseudo-R² is the largest. Hence we choose 'logit' link function to fit our model
+
+### Model 1: logit link
+
+```{r}
+model1 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film.noRomance)
+summary(model1)$coefficients%>%kable()
+```
+
+```{r}
+s1 <- summ(model1)
+```
+
+### Model 2: probit link
+
+```{r}
+model2 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "probit"), data = film.noRomance)
+summary(model2)$coefficients%>%kable()
+```
+
+```{r}
+s2 <- summ(model2)
+```
+
+### Model 3: complementary log-log link
+
+```{r}
+model3 <- glm(rating.large7 ~ length + budget + log.votes + genre, family = binomial(link = "cloglog"), data = film.noRomance)
+summary(model3)$coefficients%>%kable()
+```
+
+```{r}
+s3 <- summ(model3)
+```
+
+| Model  | link function                                           |                         AIC |                         BIC |
+|:-------|:--------------------------------------------------------|----------------------------:|----------------------------:|
+| model1 | $g(p_i)=log(\frac{p_i}{1-p_i})$                         | `r round(attr(s1,"aic"),2)` | `r round(attr(s1,"bic"),2)` |
+| model2 | $g(p_i)=\phi^{-1}(pi),p_i=\phi(\frac{x_i-\mu}{\sigma})$ | `r round(attr(s2,"aic"),2)` | `r round(attr(s2,"bic"),2)` |
+| model3 | $g(p_i)=log[-log(1-p_i)]$                               | `r round(attr(s3,"aic"),2)` | `r round(attr(s3,"bic"),2)` |
+
+## final model
+
+$$log(\frac{p_{(rating.large7=1)}}{1-p_{(rating.large7=1)}}) = `r round(s1$model$coefficients[1],2)`+`r round(s1$model$coefficients[2],2)`length_i + `r round(s1$model$coefficients[3],2)`*budget_i + `r round(s1$model$coefficients[4],2)`*log(votes_i) + `r round(s1$model$coefficients[5],2)`*I_(genre=Animation) + `r round(s1$model$coefficients[6],2)`*I_(genre=Comedy) + `r round(s1$model$coefficients[7],2)`*I_(genre=Documentary) + `r round(s1$model$coefficients[8],2)`*I_(genre=Drama) + `r round(s1$model$coefficients[9],2)`*I_(genre=Short)$$
+
+$$I_{(genre=Animation)} = \begin{cases}
+1, genre=Animation\\
+0, otherwise
+\end{cases},$$
+$$I_{(genre=Comedy)} = \begin{cases}
+1, genre=Comedy\\
+0, otherwise
+\end{cases},$$
+$$I_{(genre=Documentary)} = \begin{cases}
+1, genre=Documentary\\
+0, otherwise
+\end{cases},$$
+$$I_{(genre=Drama)} = \begin{cases}
+1, genre=Drama\\
+0, otherwise
+\end{cases},$$
+$$I_{(genre=Short)} = \begin{cases}
+1, genre=Short\\
+0, otherwise
+\end{cases}.$$
+
+
+
+## Residual Deviance
+
+$$D_0-D_1 = `r round(s1$model$null.deviance, 2)`-`r round(s1$model$deviance, 2)` = `r round(s1$model$null.deviance-s1$model$deviance, 2)` >  {\chi}^2(0.95, 9) = `r qchisq(0.95,9)` $$
+
+We reject H0, and we can say that the model1 fits the data better than Null model.
+
+```{r}
+model1$null.deviance - model1$deviance
+df = model1$df.null - model1$df.residual
+qchisq(p=0.95, df = df)
+```
+```{r}
+df_nested = nrow(film.noRomance) - length(model1$coefficients)
+```
+
+## Deviance
+
+To assess the adequacy of the model1 compared to the full/saturated model
+
+The deviance of model1 is $D=`r round(s1$model$deviance, 2)`> {\chi}^2(0.95, 1)=`r qchisq(0.95,1)`$
+
+So we can conclude that there is no evidence of lack of fit for the model1.
+
+```{r}
+qchisq(p=0.95,df=(length(model_sat$coefficients)-length(model1$coefficients)))
+```
+
+## Odds ratios of model1
+We interpret the odds ratios as follows: 
+for the increase in the film’s length, the odds of rating bigger than 7 decrease;
+for the increase in the film's budget, the odds of rating bigger than 7 increase;
+for the increase in the film's votes, the odds of rating bigger than 7 increase;
+Animation’s odds of survival were 0.71 times those of Action, Comedy’s odds of survival were 14.55 times those of Action, Documentary’s odds of survival were 135.39 times those of Action, Drama’s odds of survival were 0.12 times those of Action,
+Short’s odds of survival were 66.17 times those of Action.
+```{r}
+plot_model(model1,show.values=TRUE)+
+  scale_y_log10(limits = c(0.001, 1000))
+```
+
+# Prediction
+
+## length
+```{r}
+plot_model(model1,type="pred",terms=c("length"),axis.title=c("length","Prob(rating above 7)"))
+```
+## log.votes
+```{r}
+plot_model(model1,type="pred",terms=c("log.votes"),axis.title=c("log.votes","Prob(rating above 7)"))
+```
+
+## budget
+```{r}
+plot_model(model1,type="pred",terms=c("budget"),axis.title=c("budget","Prob(rating above 7)"))
+```
+
+## genre
+```{r}
+plot_model(model1,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 7)"))
+```
+
+
+# Model checking and diagnostics
+
+## ROC curve and AUC
+```{r}
+film.noRomance$Prid <- predict(model1, film.noRomance, type="response")
+score <- prediction(film.noRomance$Prid,film.noRomance$rating.large7)
+perf <- performance(score,"tpr","fpr")
+auc <- performance(score,"auc")
+perfd <- data.frame(x= perf@x.values[1][[1]], y=perf@y.values[1][[1]])
+p4<- ggplot(perfd, aes(x= x, y=y)) + geom_line() +
+xlab("False positive rate") + ylab("True positive rate") +
+ggtitle(paste("Area under the curve:", round(auc@y.values[[1]], 3)))
+p4
+```
+
+The area under Curve (AUC) = 0.948 indicated that model 1 is very good at predicting the films rating greater than 7 given all predictor variables.
+
+## Hosmer-Lemeshow goodness of fit test
+
+$H_0:$ Model1 fits the data well
+
+$H_1:$ Model1 is not a good fit for the data
+
+```{r}
+source(url("http://www.chrisbilder.com/categorical/Chapter5/AllGOFTests.R"))
+HLTest(model1,g=6)
+```
+
+The large p-value = 0.2417 indicates no lack of fit for the model1 and we fail to reject $H_0$.
+
+# rating large 5.5
+## with romance
+```{r}
+film1 <- film%>%
+  mutate(rating.large5.5 = cut(rating, breaks = c(0,5.5,Inf), labels=c(0,1)),
+         log.votes = log(votes))
+```
+
+```{r}
+model_rating5.5 <- glm(rating.large5.5 ~ length + budget + log.votes + genre, family = binomial(link = "logit"), data = film1)
+summary(model_rating5.5)$coefficients%>%kable()
+```
+
+```{r}
+plot_model(model_rating5.5,type="pred",terms=c("genre"),axis.title=c("genre","Prob(rating above 5.5)"))
+```
+
